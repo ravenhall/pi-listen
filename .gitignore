@@ -1,0 +1,5 @@
+node_modules/
+*.log
+cover_db*/
+pi-listen-smoke.sock
+t/tmp-*/

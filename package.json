@@ -1,0 +1,32 @@
+{
+  "name": "pi-listen",
+  "version": "0.1.0",
+  "description": "Local speech-to-text listener extension for Pi Coding Agent",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "speech-to-text",
+    "whisper",
+    "voice"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "check": "node --check dist/index.js && perl -Ilib -c bin/pi-listen-bridge.pl && prove -Ilib t",
+    "test:perl": "prove -Ilib t",
+    "coverage:perl": "perl script/run-perl-coverage.pl 80"
+  }
+}
