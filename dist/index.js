@@ -156,6 +156,20 @@ class PiListenRuntime {
 		}
 	}
 
+	dispose() {
+		this.previewText = "";
+		this.closeSocket();
+
+		if (this.bridgeProcess && !this.bridgeProcess.killed) {
+			this.bridgeProcess.kill("SIGTERM");
+		}
+
+		this.bridgeProcess = null;
+		this.state = "idle";
+		this.lastError = null;
+		this.ctx = undefined;
+	}
+
 	statusSummary() {
 		if (this.state === "error" && this.lastError) {
 			return `error: ${this.lastError}`;
@@ -320,6 +334,10 @@ export default function piListen(pi) {
 		runtime.setContext(ctx);
 	});
 
+	pi.on("session_shutdown", async () => {
+		runtime.dispose();
+	});
+
 	pi.registerCommand("listen", {
 		description: "Start or toggle pi-listen. Use --demo to simulate transcripts.",
 		handler: async (args, ctx) => {
@@ -350,6 +368,6 @@ export default function piListen(pi) {
 	});
 
 	process.once("beforeExit", () => {
-		void runtime.stop(false);
+		runtime.dispose();
 	});
 }

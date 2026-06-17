@@ -11,9 +11,13 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
   "files": [
     "bin",
     "dist",
+    "lib",
     "src",
     "README.md",
     "LICENSE",
@@ -25,8 +29,9 @@
     ]
   },
   "scripts": {
-    "check": "node --check dist/index.js && perl -Ilib -c bin/pi-listen-bridge.pl && prove -Ilib t",
+    "check": "node --check dist/index.js && perl -Ilib -c bin/pi-listen-bridge.pl && prove -Ilib t && node script/smoke-package.mjs",
     "test:perl": "prove -Ilib t",
+    "smoke:package": "node script/smoke-package.mjs",
     "coverage:perl": "perl script/run-perl-coverage.pl 80"
   }
 }

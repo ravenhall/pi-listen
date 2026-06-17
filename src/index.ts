@@ -7,7 +7,7 @@ import type {
 	ExtensionAPI,
 	ExtensionCommandContext,
 	ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
+} from "@earendil-works/pi-coding-agent";
 
 const STATUS_KEY = "pi-listen";
 const WIDGET_KEY = "pi-listen";
@@ -168,6 +168,20 @@ class PiListenRuntime {
 		if (notify && this.ctx?.hasUI) {
 			this.ctx.ui.notify("pi-listen stopped.", "info");
 		}
+	}
+
+	dispose() {
+		this.previewText = "";
+		this.closeSocket();
+
+		if (this.bridgeProcess && !this.bridgeProcess.killed) {
+			this.bridgeProcess.kill("SIGTERM");
+		}
+
+		this.bridgeProcess = null;
+		this.state = "idle";
+		this.lastError = null;
+		this.ctx = undefined;
 	}
 
 	statusSummary() {
@@ -334,6 +348,10 @@ export default function piListen(pi: ExtensionAPI) {
 		runtime.setContext(ctx);
 	});
 
+	pi.on("session_shutdown", async () => {
+		runtime.dispose();
+	});
+
 	pi.registerCommand("listen", {
 		description: "Start or toggle pi-listen. Use --demo to simulate transcripts.",
 		handler: async (args, ctx) => {
@@ -364,6 +382,6 @@ export default function piListen(pi: ExtensionAPI) {
 	});
 
 	process.once("beforeExit", () => {
-		void runtime.stop(false);
+		runtime.dispose();
 	});
 }
