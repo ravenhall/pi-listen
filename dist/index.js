@@ -19,7 +19,7 @@ const STARTUP_HEADER = [
 	"  /listen-status shows the current runtime state",
 	"",
 	"Shortcuts:",
-	"  ctrl+l toggles listening",
+	"  Option+L / Alt+L toggles listening",
 ].join("\n");
 
 class JsonLineBuffer {
@@ -391,7 +391,7 @@ export default function piListen(pi) {
 		},
 	});
 
-	pi.registerShortcut("ctrl+l", {
+	pi.registerShortcut("alt+l", {
 		description: "Toggle pi-listen",
 		handler: async (ctx) => {
 			runtime.setContext(ctx);

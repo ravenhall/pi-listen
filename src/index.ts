@@ -24,7 +24,7 @@ const STARTUP_HEADER = [
 	"  /listen-status shows the current runtime state",
 	"",
 	"Shortcuts:",
-	"  ctrl+l toggles listening",
+	"  Option+L / Alt+L toggles listening",
 ].join("\n");
 
 type BridgePacketStatus = "streaming" | "final" | "error";
@@ -405,7 +405,7 @@ export default function piListen(pi: ExtensionAPI) {
 		},
 	});
 
-	pi.registerShortcut("ctrl+l", {
+	pi.registerShortcut("alt+l", {
 		description: "Toggle pi-listen",
 		handler: async (ctx) => {
 			runtime.setContext(ctx);
