@@ -13,6 +13,19 @@ const STATUS_KEY = "pi-listen";
 const WIDGET_KEY = "pi-listen";
 const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
 const DEFAULT_RETRY_DELAY_MS = 150;
+const RECORDING_INDICATOR = "REC";
+const STARTUP_HEADER = [
+	"pi-listen",
+	"",
+	"Commands:",
+	"  /listen starts or toggles listening",
+	"  /listen --demo simulates transcript frames",
+	"  /listen-stop stops listening and clears the overlay",
+	"  /listen-status shows the current runtime state",
+	"",
+	"Shortcuts:",
+	"  ctrl+l toggles listening",
+].join("\n");
 
 type BridgePacketStatus = "streaming" | "final" | "error";
 
@@ -294,13 +307,19 @@ class PiListenRuntime {
 			this.state === "error" && this.lastError
 				? `error: ${this.lastError}`
 				: this.state === "listening" && this.previewText
-					? `listening: ${this.previewText}`
+					? `${RECORDING_INDICATOR} listening: ${this.previewText}`
+					: this.state === "listening"
+						? `${RECORDING_INDICATOR} listening`
 					: this.state;
 
 		this.ctx.ui.setStatus(STATUS_KEY, suffix);
 
 		if (this.previewText) {
-			this.ctx.ui.setWidget(WIDGET_KEY, [`Mic: ${this.previewText}`], {
+			this.ctx.ui.setWidget(WIDGET_KEY, [`${RECORDING_INDICATOR} Mic: ${this.previewText}`], {
+				placement: "belowEditor",
+			});
+		} else if (this.state === "listening") {
+			this.ctx.ui.setWidget(WIDGET_KEY, [`${RECORDING_INDICATOR} Mic: listening`], {
 				placement: "belowEditor",
 			});
 		} else {
@@ -346,6 +365,11 @@ export default function piListen(pi: ExtensionAPI) {
 
 	pi.on("session_start", async (_event, ctx) => {
 		runtime.setContext(ctx);
+		pi.sendMessage({
+			customType: "pi-listen",
+			display: "pi-listen",
+			content: STARTUP_HEADER,
+		});
 	});
 
 	pi.on("session_shutdown", async () => {
@@ -378,6 +402,19 @@ export default function piListen(pi: ExtensionAPI) {
 		handler: async (_args, ctx) => {
 			runtime.setContext(ctx);
 			ctx.ui.notify(`pi-listen ${runtime.statusSummary()}`, "info");
+		},
+	});
+
+	pi.registerShortcut("ctrl+l", {
+		description: "Toggle pi-listen",
+		handler: async (ctx) => {
+			runtime.setContext(ctx);
+			if (runtime.isActive()) {
+				await runtime.stop();
+				return;
+			}
+
+			await runtime.start(ctx, parseListenOptions(""));
 		},
 	});
 
