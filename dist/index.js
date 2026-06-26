@@ -9,6 +9,7 @@ const WIDGET_KEY = "pi-listen";
 const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
 const DEFAULT_RETRY_DELAY_MS = 150;
 const RECORDING_INDICATOR = "REC";
+const DEFAULT_LISTEN_SHORTCUT = "ctrl+shift+d";
 
 class JsonLineBuffer {
 	constructor() {
@@ -343,7 +344,7 @@ function shellQuote(...parts) {
 
 function getConfiguredShortcut() {
 	const shortcut = process.env.PI_LISTEN_SHORTCUT?.trim();
-	return shortcut || undefined;
+	return shortcut || DEFAULT_LISTEN_SHORTCUT;
 }
 
 function formatShortcut(shortcut) {
