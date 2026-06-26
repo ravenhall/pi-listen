@@ -9,18 +9,6 @@ const WIDGET_KEY = "pi-listen";
 const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
 const DEFAULT_RETRY_DELAY_MS = 150;
 const RECORDING_INDICATOR = "REC";
-const STARTUP_HEADER = [
-	"pi-listen",
-	"",
-	"Commands:",
-	"  /listen starts or toggles listening",
-	"  /listen --demo simulates transcript frames",
-	"  /listen-stop stops listening and clears the overlay",
-	"  /listen-status shows the current runtime state",
-	"",
-	"Shortcuts:",
-	"  Option+L / Alt+L toggles listening",
-].join("\n");
 
 class JsonLineBuffer {
 	constructor() {
@@ -58,6 +46,7 @@ class JsonLineBuffer {
 class PiListenRuntime {
 	constructor() {
 		this.bridgePath = fileURLToPath(new URL("../bin/pi-listen-bridge.pl", import.meta.url));
+		this.sttCommandPath = fileURLToPath(new URL("../bin/pi-listen-stt.mjs", import.meta.url));
 		this.lineBuffer = new JsonLineBuffer();
 		this.ctx = undefined;
 		this.bridgeProcess = null;
@@ -85,6 +74,7 @@ class PiListenRuntime {
 		}
 
 		await this.stop(false);
+
 		this.state = "starting";
 		this.previewText = "";
 		this.lastError = null;
@@ -98,8 +88,9 @@ class PiListenRuntime {
 		if (options.model) {
 			args.push("--model", options.model);
 		}
-		if (options.whisperCommand) {
-			args.push("--whisper", options.whisperCommand);
+		const whisperCommand = options.whisperCommand ?? process.env.PI_LISTEN_WHISPER_CMD ?? shellQuote(process.execPath, this.sttCommandPath);
+		if (!options.demo) {
+			args.push("--whisper", whisperCommand);
 		}
 
 		const child = spawn("perl", [this.bridgePath, ...args], {
@@ -346,15 +337,53 @@ function parseListenOptions(rawArgs) {
 	return options;
 }
 
+function shellQuote(...parts) {
+	return parts.map((part) => `'${part.replace(/'/g, `'\\''`)}'`).join(" ");
+}
+
+function getConfiguredShortcut() {
+	const shortcut = process.env.PI_LISTEN_SHORTCUT?.trim();
+	return shortcut || undefined;
+}
+
+function formatShortcut(shortcut) {
+	return shortcut
+		.split("+")
+		.map((part) => {
+			const normalized = part.trim();
+			return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : normalized;
+		})
+		.join("+");
+}
+
+function buildStartupHeader(shortcut) {
+	const lines = [
+		"pi-listen",
+		"",
+		"Commands:",
+		"  /listen starts or toggles listening",
+		"  /listen --demo simulates transcript frames",
+		"  /listen-stop stops listening and clears the overlay",
+		"  /listen-status shows the current runtime state",
+	];
+
+	if (shortcut) {
+		lines.push("", "Shortcuts:", `  ${formatShortcut(shortcut)} toggles listening`);
+	}
+
+	return lines.join("\n");
+}
+
 export default function piListen(pi) {
 	const runtime = new PiListenRuntime();
+	const listenShortcut = getConfiguredShortcut();
 
 	pi.on("session_start", async (_event, ctx) => {
 		runtime.setContext(ctx);
 		pi.sendMessage({
 			customType: "pi-listen",
 			display: "pi-listen",
-			content: STARTUP_HEADER,
+			content: buildStartupHeader(listenShortcut),
 		});
 	});
 
@@ -391,18 +420,20 @@ export default function piListen(pi) {
 		},
 	});
 
-	pi.registerShortcut("alt+l", {
-		description: "Toggle pi-listen",
-		handler: async (ctx) => {
-			runtime.setContext(ctx);
-			if (runtime.isActive()) {
-				await runtime.stop();
-				return;
-			}
+	if (listenShortcut) {
+		pi.registerShortcut(listenShortcut, {
+			description: "Toggle pi-listen",
+			handler: async (ctx) => {
+				runtime.setContext(ctx);
+				if (runtime.isActive()) {
+					await runtime.stop();
+					return;
+				}
 
-			await runtime.start(ctx, parseListenOptions(""));
-		},
-	});
+				await runtime.start(ctx, parseListenOptions(""));
+			},
+		});
+	}
 
 	process.once("beforeExit", () => {
 		runtime.dispose();

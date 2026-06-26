@@ -6,19 +6,28 @@ This repo packages the initial architecture from the shared Gemini conversation 
 
 - a committed `dist/` entry point exported through `package.json`
 - a Pi extension that exposes `/listen`, `/listen-stop`, and `/listen-status`
-- a Perl UNIX-socket bridge that can run in `--demo` mode today and forward a real Whisper command later
+- a Perl UNIX-socket bridge that can run in `--demo` mode, forward a custom transcript command, or launch the bundled speech-to-text command
 
 ## Commands
 
-- `/listen` starts the bridge
+- `/listen` starts the bridge and bundled speech-to-text command
 - `/listen --demo` runs a fake transcript stream for end-to-end UI testing
 - `/listen-stop` stops the bridge and clears the overlay
 - `/listen-status` shows the current runtime state
 
 ## Environment
 
-- `PI_LISTEN_WHISPER_CMD`: optional shell command that emits transcript frames
+- `PI_LISTEN_WHISPER_CMD`: optional shell command that emits transcript frames instead of the bundled backend
 - `PI_LISTEN_MODEL`: optional model label forwarded to the bridge
+- `PI_LISTEN_SHORTCUT`: optional Pi shortcut to register and show in startup help
+
+## Bundled Speech-to-Text
+
+`/listen` uses [bin/pi-listen-stt.mjs](/Users/nwaddell/git/pi-listen/bin/pi-listen-stt.mjs) when `PI_LISTEN_WHISPER_CMD` is not set.
+
+- macOS: uses the operating system Speech and AVFoundation frameworks through the bundled Swift backend.
+- Windows: uses the built-in .NET `System.Speech` recognizer through the bundled PowerShell backend.
+- Linux: currently emits a clear error because there is no broadly available default OS speech-to-text CLI. Set `PI_LISTEN_WHISPER_CMD` to a local or cloud STT command on Linux.
 
 `PI_LISTEN_WHISPER_CMD` should emit one transcript frame per line. Supported formats:
 
@@ -35,7 +44,10 @@ Any non-empty line without a prefix is treated as a `final` transcript.
 ```text
 pi-listen/
 ├── bin/
-│   └── pi-listen-bridge.pl
+│   ├── pi-listen-bridge.pl
+│   ├── pi-listen-darwin.swift
+│   ├── pi-listen-stt.mjs
+│   └── pi-listen-windows.ps1
 ├── dist/
 │   ├── index.d.ts
 │   └── index.js

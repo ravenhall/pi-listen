@@ -11,6 +11,9 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "pi-listen-stt": "./bin/pi-listen-stt.mjs"
+  },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },

@@ -37,9 +37,20 @@ try {
 	if (!listing.includes("package/lib/Pi/Listen/Bridge.pm\n")) {
 		throw new Error("Packaged tarball is missing lib/Pi/Listen/Bridge.pm.");
 	}
+	if (!listing.includes("package/bin/pi-listen-stt.mjs\n")) {
+		throw new Error("Packaged tarball is missing bin/pi-listen-stt.mjs.");
+	}
+	if (!listing.includes("package/bin/pi-listen-darwin.swift\n")) {
+		throw new Error("Packaged tarball is missing bin/pi-listen-darwin.swift.");
+	}
+	if (!listing.includes("package/bin/pi-listen-windows.ps1\n")) {
+		throw new Error("Packaged tarball is missing bin/pi-listen-windows.ps1.");
+	}
 
 	run("tar", ["-xzf", tarballPath, "-C", tempRoot]);
 	run("perl", ["-c", join(tempRoot, "package", "bin", "pi-listen-bridge.pl")]);
+	run("node", ["--check", join(tempRoot, "package", "bin", "pi-listen-stt.mjs")]);
+	run("node", ["-e", "const p=require(process.argv[1]); if (p.bin?.['pi-listen-stt'] !== './bin/pi-listen-stt.mjs') throw new Error('missing pi-listen-stt bin entry')", join(tempRoot, "package", "package.json")]);
 	console.log("Package smoke test passed.");
 } finally {
 	rmSync(tempRoot, { recursive: true, force: true });
