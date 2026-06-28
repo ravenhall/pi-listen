@@ -131,7 +131,7 @@ class PiListenRuntime {
 			this.bridgeProcess = null;
 			this.closeSocket();
 
-			if (expected) {
+			if (expected || this.state === "error") {
 				return;
 			}
 

@@ -25,7 +25,6 @@ final class Listener {
 
                 do {
                     try self.run()
-                    RunLoop.main.run()
                 } catch {
                     self.emit("error", error.localizedDescription)
                     exit(1)
@@ -120,3 +119,4 @@ let listener = Listener()
 signal(SIGINT) { _ in exit(0) }
 signal(SIGTERM) { _ in exit(0) }
 listener.start()
+RunLoop.main.run()

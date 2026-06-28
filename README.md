@@ -29,6 +29,8 @@ This repo packages the initial architecture from the shared Gemini conversation 
 - Windows: uses the built-in .NET `System.Speech` recognizer through the bundled PowerShell backend.
 - Linux: currently emits a clear error because there is no broadly available default OS speech-to-text CLI. Set `PI_LISTEN_WHISPER_CMD` to a local or cloud STT command on Linux.
 
+On macOS, transcription requires both Microphone and Speech Recognition permission for the terminal or app that launches Pi. If `/listen` reports `Speech recognition permission was not granted.`, enable it in System Settings under Privacy & Security, then restart Pi.
+
 `PI_LISTEN_WHISPER_CMD` should emit one transcript frame per line. Supported formats:
 
 ```text

@@ -9,7 +9,6 @@ use Getopt::Long qw(GetOptionsFromArray);
 use IO::Handle;
 use IO::Socket::UNIX;
 use JSON::PP qw(encode_json);
-use POSIX qw(WNOHANG);
 use Time::HiRes qw(sleep);
 
 our @EXPORT_OK = qw(
@@ -129,19 +128,34 @@ sub run_whisper_bridge {
 
     $whisper_fh->autoflush(1);
 
+    my $saw_packet = 0;
+    my $saw_error = 0;
+
     while (my $line = <$whisper_fh>) {
         chomp $line;
         next if $line =~ /^\s*$/;
 
         if ($line =~ /^(streaming|final|error)\t(.*)$/s) {
+            $saw_packet = 1;
+            $saw_error = 1 if $1 eq 'error';
             emit_packet($client_fh, $1, $2, $model);
             next;
         }
 
+        $saw_packet = 1;
         emit_packet($client_fh, 'final', $line, $model);
     }
 
-    waitpid($pid, WNOHANG);
+    waitpid($pid, 0);
+    my $exit_status = $? >> 8;
+    my $signal = $? & 127;
+
+    if (!$saw_packet) {
+        emit_packet($client_fh, 'error', 'Speech backend exited before producing transcript output.', $model);
+        return 0;
+    }
+
+    return 0 if $saw_error || $exit_status != 0 || $signal != 0;
     return 1;
 }
 
@@ -182,9 +196,9 @@ sub main {
         return 0;
     }
 
-    run_whisper_bridge($client, $options, $options->{model});
+    my $ok = run_whisper_bridge($client, $options, $options->{model});
     cleanup_socket($socket_path);
-    return 0;
+    return $ok ? 0 : 1;
 }
 
 1;

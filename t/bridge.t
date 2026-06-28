@@ -181,7 +181,8 @@ like($defaults{socket}, qr{/tmp/pi-listen-\d+\.sock$}, 'default socket path is n
     my $command = q{printf 'streaming\tpartial\nfinal\tcomplete\nplain fallback\n'};
     my $packets = capture_packets(sub {
         my ($fh) = @_;
-        run_whisper_bridge($fh, { whisper => $command }, 'tiny.en');
+        my $ok = run_whisper_bridge($fh, { whisper => $command }, 'tiny.en');
+        is($ok, 1, 'run_whisper_bridge succeeds when the command emits transcript packets');
     });
 
     is_deeply(
@@ -192,6 +193,36 @@ like($defaults{socket}, qr{/tmp/pi-listen-\d+\.sock$}, 'default socket path is n
             { status => 'final', text => 'plain fallback', model => 'tiny.en' },
         ],
         'run_whisper_bridge maps prefixed and fallback transcript lines'
+    );
+}
+
+{
+    my $command = q{perl -e 'exit 7'};
+    my $packets = capture_packets(sub {
+        my ($fh) = @_;
+        my $ok = run_whisper_bridge($fh, { whisper => $command }, 'tiny.en');
+        is($ok, 0, 'run_whisper_bridge fails when the command emits no packets');
+    });
+
+    is_deeply(
+        $packets,
+        [{ status => 'error', text => 'Speech backend exited before producing transcript output.', model => 'tiny.en' }],
+        'run_whisper_bridge reports a backend that exits before transcript output'
+    );
+}
+
+{
+    my $command = q{printf 'error\tpermission denied\n'; exit 7};
+    my $packets = capture_packets(sub {
+        my ($fh) = @_;
+        my $ok = run_whisper_bridge($fh, { whisper => $command }, 'tiny.en');
+        is($ok, 0, 'run_whisper_bridge fails when the command emits an error packet');
+    });
+
+    is_deeply(
+        $packets,
+        [{ status => 'error', text => 'permission denied', model => 'tiny.en' }],
+        'run_whisper_bridge forwards backend error packets'
     );
 }
 
@@ -241,6 +272,19 @@ like($defaults{socket}, qr{/tmp/pi-listen-\d+\.sock$}, 'default socket path is n
     is($server->{autoflush_calls}, 1, 'server autoflush is enabled');
     is($server->{accept_calls}, 1, 'server accept is invoked once');
     is($client->{autoflush_calls}, 1, 'client autoflush is enabled');
+}
+
+{
+    my $client = TestSocket->new();
+    my $server = TestServer->new($client);
+
+    local *Pi::Listen::Bridge::create_server = sub { return $server; };
+    local *Pi::Listen::Bridge::ensure_socket_directory = sub { return 1; };
+    local *Pi::Listen::Bridge::cleanup_socket = sub { return 1; };
+    local *Pi::Listen::Bridge::run_whisper_bridge = sub { return 0; };
+
+    my $result = main('--socket', '/tmp/live.sock', '--model', 'live.en', '--whisper', 'echo hi');
+    is($result, 1, 'main returns failure when whisper mode fails');
 }
 
 {
